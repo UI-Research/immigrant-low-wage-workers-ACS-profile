@@ -1,0 +1,1 @@
+This folder contains all the IPUMS files downloaded directly from IPUMS. As of today, this step is manual.
