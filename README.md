@@ -11,7 +11,7 @@ This repo contains the code to estimate key statistics from the ACS that help de
 *  **Analysis:** based on the file produced in the previous dofile, we create each sheet of the _spreadsheet_, but leave out programming each individual graph. That is later done by hand. **Here is a point where someone with better coding skills can pick up to automate the graph making piece on like R.**
 
 ## Note on labeling before describing the details of the data
-Once you successfully run this code, you will notice that the labels for things like occupations are not coded in, rather we use the OCC codes available on IPUMS. Detailed occupational codes since 2018 can be found here [here](https://usa.ipums.org/usa/volii/occ2018.shtml) **Would appreciate any thoughts on how to automate this.**
+Once you successfully run this code, you will notice that the labels for things like occupations are not coded in, rather we use the OCC codes available on IPUMS. Detailed occupational codes since 2018 can be found here [here](https://usa.ipums.org/usa/volii/occ2018.shtml).  **Would appreciate any thoughts on how to automate this.**
 
 
 ## IPUMS data pulls 
