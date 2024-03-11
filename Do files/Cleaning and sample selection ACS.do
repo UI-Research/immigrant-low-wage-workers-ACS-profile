@@ -86,8 +86,8 @@ P	POVERTY		Poverty status
 
 *setting up useful globals:
 
-global rawf "C:\Users\fhernandez\Desktop\LWW\Data\" // needs to be fixed for each computer
-global proc "C:\Users\fhernandez\Desktop\LWW\Processed files\" // needs to be fixed for each computer
+*global rawf "C:\Users\fhernandez\Desktop\LWW\Data\" // needs to be fixed for each computer
+global proc "C:\Users\MCasas\Box\Immigrants in low wage workforce\Analysis using 2021-22 data\Data\" // needs to be fixed for each computer
 
 clear all
 /*
@@ -103,7 +103,7 @@ clear all
 
 *forvalues k = 1(1)2 {
 
-use "${proc}acs1y_2022_source.dta", clear
+use "${proc}2022_acs_data.dta", clear 
 
 *basics
 count		// 1-y: 3,252,599; 5-y: 15,537,785
@@ -380,11 +380,11 @@ label var sex "Respondent is female"
 
 drop if inlist(bpl, 100,105,110,115,120) // dropping PR and other US territories
 
-gen agef = age<65 | age>15
-	label define agef	0 "Not within age cut-off" ///
-						1 "Within age cut-off" 
+gen agef = age <= 25 | age<=54
+	label define agef	0 "Not a prime-age worker" ///
+						1 "Prime-age worker" 
 	label val agef agef 
-	label var agef "Age cut-off indicator"
+	label var agef "Prime-age worker indicator"
 
 *defining labforce/employed sample
 recode labforce (0=.m) (1=0) (2=1) 
@@ -401,11 +401,12 @@ label define farm	0 "Non-farm" ///
 label val farm farm
 label var farm "Farm indicator"
 
-gen insamp = 1 if empstat == 1 & agef == 1 & farm == 0 
+* using definition from workrise: age 25-54 and employed in the last year 
+gen insamp = 1 if empstat == 1 & agef == 1 
 	replace insamp = 0 if insamp == .
 	
-	label define insamp	1 "In sample (employed, aged 16-64, and not living in a farm)" ///
-						0 "Not in the sample (the rest)" 
+	label define insamp	1 "In sample (employed, aged 25-54)" ///
+						0 "Not in sample" 
 	label val insamp insamp
 	label var insamp "In-sample indicator"
 	
@@ -448,6 +449,7 @@ tab racem, gen(racem)
 
 
 **KEY VARIABLES**
+/*
 forvalues i = 1(1)56 {
 	capture noisily xtile  q_wage_`i' = hwage if incwage>0 & insamp==1 & statefip==`i' [fw = perwt], n(10)
 	}
@@ -455,17 +457,27 @@ gen q_wage = .
 forvalues i = 1(1)56 {
 	capture noisily replace q_wage = q_wage_`i' if q_wage==. & q_wage_`i' !=.
 	}
-	
-gen lww = q_wage<5 
+*/ 
+
+
+*** Updating definition of low wage workers based on https://www.workrisenetwork.org/sites/default/files/2023-10/technical-appendix-who-low-wage-workforce.pdf 
+
+summ hwage if insamp == 1, d
+
+gen mednatwage_lww = r(p50)*(2/3)
+
+gen lww = (hwage < mednatwage_lww)
+	replace lww = 0 if insamp == 0 
+
 label define lww	1 "Low-wage worker" ///
 					0 "Not a low-wage worker" ///
 					.m "Missing information"
-label var lww "Low-wage worker indicator based on state income quintiles"
+label var lww "Low-wage worker indicator"
 
-drop q_wage_*
+*drop q_wage_*
 
-label var q_wage "Wage quintile by state" 
-label var n "Person indicator"
+*label var q_wage "Wage quintile by state" 
+*label var n "Person indicator"
 
 /*note, incwage has 2 non-relevant responses, incwage=999999 & incwage==999998
 that stem from non-response and not applicable, respectively. I checked that 
@@ -473,11 +485,11 @@ the labor force sample doesn't have any of these values included. All incwages
 reported none of these values.
 */
 
-save "${proc}acs1y_2022_full.dta", replace // sample for population estimates
+save "${proc}acs1y_2022_full_clean.dta", replace // sample for population estimates
  
  *dropping ages -15 and +64, eyeball, seems to drop evenly across sample years
 keep if insamp == 1 
 
-save "${proc}acs1y_2022_employed.dta", replace 
+save "${proc}acs1y_2022_employed_clean.dta", replace 
 	
 *}
