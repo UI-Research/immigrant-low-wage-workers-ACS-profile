@@ -466,7 +466,7 @@ summ hwage if insamp == 1, d
 
 gen mednatwage_lww = r(p50)*(2/3)
 
-gen lww = (hwage < mednatwage_lww)
+gen lww = (hwage <= mednatwage_lww)
 	replace lww = 0 if insamp == 0 
 
 label define lww	1 "Low-wage worker" ///
