@@ -14,7 +14,7 @@ global tab "C:\Users\fhernandez\Desktop\LWW\"
 			
 
 clear all
-use "${proc}acs1y_2022_full.dta", clear
+use "${proc}acs1y_2022_full_clean_${S_DATE}.dta", clear
 svyset [pw=perwt]
 
 **BASIC SAMPLE CUTS**
@@ -79,7 +79,7 @@ matrix ipops = tipop\lipop\eipop\leipop
 putexcel	B4 = matrix(ipops),
 		
 clear all
-use "${proc}acs1y_2022_employed.dta", clear
+use "${proc}acs1y_2022_employed_clean_${S_DATE}.dta", clear
 svyset [pw=perwt]
 					
 *TAB 3 GEOGRAPHIC DISTRIBUTION OF IMMIGRANT LOW-WAGE WORKERS
@@ -110,7 +110,7 @@ putexcel	A4 = "State" ///
 
 			
 *TAB 4 REGIONS AND COUNTRIES OF ORIGIN OF LOW-WAGE IMMIGRANT WORKERS
-tab origin if native==0 & lww==1  [fw=perwt], matcell(origN) matrow(origlabs)
+tab origin if native==0 & lww==1  [fw=perwt], matcell(origN) matrow(origlabs) // immigrant and lww by bpl region
 	matrix origtot = r(N)
 	scalar origt = r(N)
 	matrix origsh = origlabs,(origN/origt)
@@ -118,7 +118,7 @@ tab origin if native==0 & lww==1  [fw=perwt], matcell(origN) matrow(origlabs)
 forvalues i = 1(1)6 {
 	scalar origNd`i' = origN[`i',1]
 	
-	tab bpld if native==0 & lww==1 & origin == `i'  [fw=perwt], sort matcell(origd`i')  matrow(origlabs`i')
+	tab bpld if native==0 & lww==1 & origin == `i'  [fw=perwt], sort matcell(origd`i')  matrow(origlabs`i') // same + bpl country
 	capture noisily matrix origshd`i' = (origd`i'/origNd`i')
 	capture noisily matrix origd`i' = origlabs`i',(origd`i'/origNd`i')
 }
@@ -141,7 +141,7 @@ putexcel set "${tab}Tables and Graphs acs1y 2022 data_$S_DATE.xlsx" , modify she
 	
 *TAB 5 NATIVITY BREAKDOWN OF RACIAL/ETHNIC GROUPS
 forvalues r = 1(1)7 {
-	svy: mean immigrant if lww==1 & racem==`r'
+	svy: mean immigrant if lww==1 & racem==`r' // share immigrants who are lww by race
 		matrix natr`r' =  e(b) , 1 - e(b) 
 }
 	matrix natr = natr1 \ natr2 \ natr3 \ natr4 \ natr5 \ natr6 \ natr6 
@@ -227,13 +227,13 @@ putexcel set "${tab}Tables and Graphs acs1y 2022 data_$S_DATE.xlsx" , modify she
 	
 
 *TAB 8 ENGLISH PROFICIENCY
-svy: tab speak2  if native==0 // all immworkers
+svy: tab speakeng2  if native==0 // all immworkers
 	matrix seng1 = e(b),e(N_pop)
 
-svy: tab speak2  if native==0 & lww == 0 // immigrant non-lw workers 
+svy: tab speakeng2  if native==0 & lww == 0 // immigrant non-lw workers 
 	matrix seng2 = e(b), e(N_pop)	
 	
-svy: tab speak2  if native==0 & lww == 1 // immigrant LWW 
+svy: tab speakeng2  if native==0 & lww == 1 // immigrant LWW 
 	matrix seng3 = e(b), e(N_pop)	
 	
 	matrix seng = seng1\seng2\seng3
@@ -252,11 +252,11 @@ putexcel set "${tab}Tables and Graphs acs1y 2022 data_$S_DATE.xlsx" , modify she
 	putexcel	A4 = matrix(seng) , names
 
 *TAB 9 YEARS IN THE US	
-svy: tab tenure if native==0 & insamp==1 // all IW
+svy: tab yearsusa if native==0 & insamp==1 // all IW
 	matrix yrslvus1 = e(b), e(N_pop)
-svy: tab tenure if native==0 & lww==0 // all nLWIW
+svy: tab yearsusa if native==0 & lww==0 // all nLWIW
 	matrix yrslvus2 = e(b), e(N_pop)
-svy: tab tenure if native==0 & lww==1 // all LWIW
+svy: tab yearsusa if native==0 & lww==1 // all LWIW
 	matrix yrslvus3 = e(b), e(N_pop)
 	
 	matrix yrslvus = yrslvus1\yrslvus2\yrslvus3
@@ -481,7 +481,7 @@ tab occ if lww == 1 & native == 0 [fw = perwt] , label sort matcell(occ) matrow(
 	svy: mean nlep if native == 0  & lww == 1 
 		matrix nlep = e(b)
 
-	svy: mean tenure2 if native == 0  & lww == 1 
+	svy: mean yearsusa2 if native == 0  & lww == 1 
 		matrix ten2 = e(b)
 	
 	svy: mean naturalized if native == 0  & lww == 1 
@@ -518,7 +518,7 @@ tab occ if lww == 1 & native == 0 [fw = perwt] , label sort matcell(occ) matrow(
 		svy: mean nlep if native == 0  & lww == 1 & occ == occlab[`o',1]
 			matrix nlep`o' = e(b)
 		
-		svy: mean tenure2 if native == 0  & lww == 1 & occ == occlab[`o',1]
+		svy: mean yearsusa2 if native == 0  & lww == 1 & occ == occlab[`o',1]
 			matrix ten2`o' = e(b)
 			
 		svy: mean naturalized if native == 0  & lww == 1 & occ == occlab[`o',1]
@@ -586,7 +586,7 @@ use "${proc}acs1y_2022_employed.dta", clear
 	preserve 
 		collapse	(sum) n ///
 					(p50) hwage ///
-					(mean) educm1 nlep tenure2 naturalized racem1 racem2 racem3 ///
+					(mean) educm1 nlep yearsusa2 naturalized racem1 racem2 racem3 ///
 						racem4 sex parttime ///
 					[fw = perwt] if native == 0 & lww == 1, by(occ)
 		
@@ -602,4 +602,3 @@ use "${proc}acs1y_2022_employed.dta", clear
 	
 	export excel using "${tab}Female dense occupations of ILWW_$S_DATE.xlsx" ///
 		in 1/25, sheet("FEM OCC TAB") sheetmodify firstrow(variables) 
-
