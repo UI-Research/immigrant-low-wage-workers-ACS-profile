@@ -1,115 +1,31 @@
 /*
 Project:		Work Rise Immigrant Low Wage Workers (LWW)
 Owners:			Hamutal Bernstein, Fernando Hernandez
-Date modified:	3/1/2021
-Task:			Build out of ACS and CPS files, to desired sample
+Date modified:	8/6/2024
+Task:			Build out of ACS sample
 Notes:
-
-*1. ACS DATA: 5-year estimates 
-
-Variable list:
-P = Person level
-H = Household level
-
-Type	Variable	Label
-H	YEAR		Census year
-H	MULTYEAR	Actual year of survey, multi-year ACS/PRCS
-H	SAMPLE		IPUMS sample identifier
-H	SERIAL		Household serial number
-H	CBSERIAL	Original Census Bureau household serial number
-H	HHWT		Household weight
-H	HHTYPE		Household Type
-H	CLUSTER		Household cluster for variance estimation
-H	ADJUST		Adjustment factor, ACS/PRCS
-H	CPI99		CPI-U adjustment factor to 1999 dollars
-H	REGION		Census region and division
-H	STATEFIP	State (FIPS code)
-H	COUNTYFIP	County (FIPS code)
-H	DENSITY		Population-weighted density of PUMA
-H	METRO		Metropolitan status
-H	CITY		City
-H	PUMA		Public Use Microdata Area
-H	STRATA		Household strata for variance estimation
-H	HOMELAND	American Indian, Alaska Native, or Native Hawaiian homeland area
-H	GQ			Group quarters status
-H	FARM		Farm status
-H	HHINCOME	Total household income
-H	LINGISOL	Linguistic isolation
-P	PERNUM		Person number in sample unit
-P	PERWT		Person weight
-P	RELATE 		(general)	Relationship to household head [general version]
-P	RELATED 	(detailed)	Relationship to household head [detailed version]
-P	SEX			Sex
-P	AGE			Age
-P	MARST		Marital status
-P	RACE 		(general)	Race [general version]
-P	RACED 		(detailed)	Race [detailed version]
-P	HISPAN 		(general)	Hispanic origin [general version]
-P	HISPAND 	(detailed)	Hispanic origin [detailed version]
-P	BPL 		(general)	Birthplace [general version]
-P	BPLD 		(detailed)	Birthplace [detailed version]
-P	ANCESTR1 	(general)	Ancestry, first response [general version]
-P	ANCESTR1D 	(detailed)	Ancestry, first response [detailed version]
-P	ANCESTR2 	(general)	Ancestry, second response [general version]
-P	ANCESTR2D 	(detailed)	Ancestry, second response [detailed version]
-P	CITIZEN		Citizenship status
-P	YRNATUR		Year naturalized
-P	YRIMMIG		Year of immigration
-P	YRSUSA1		Years in the United States
-P	YRSUSA2		Years in the United States, intervalled
-P	LANGUAGE 	(general)	Language spoken [general version]
-P	LANGUAGED 	(detailed)	Language spoken [detailed version]
-P	SPEAKENG	Speaks English
-P	EDUC		(general)	Educational attainment [general version]
-P	EDUCD 		(detailed)	Educational attainment [detailed version]
-P	DEGFIELD 	(general)	Field of degree [general version]
-P	DEGFIELDD	(detailed)	Field of degree [detailed version]
-P	DEGFIELD2 	(general)	Field of degree (2) [general version]
-P	DEGFIELD2D 	(detailed)	Field of degree (2) [detailed version]
-P	EMPSTAT 	(general)	Employment status [general version]
-P	EMPSTATD 	(detailed)	Employment status [detailed version]
-P	LABFORCE	Labor force status
-P	CLASSWKR 	(general)	Class of worker [general version]
-P	CLASSWKRD 	(detailed)	Class of worker [detailed version]
-P	OCC			Occupation
-P	IND			Industry
-P	WKSWORK1	Weeks worked last year
-P	UHRSWORK	Usual hours worked per week
-P	WRKLSTWK	Worked last week
-P	WORKEDYR	Worked last year
-P	INCTOT		Total personal 
-P	INCWAGE		Wage and salary income
-P	INCEARN		Total personal earned income
-P	POVERTY		Poverty status
-
 */
 
+*1. ACS DATA: 1-year estimates 
 *setting up useful globals:
-
-*global rawf "C:\Users\fhernandez\Desktop\LWW\Data\" // needs to be fixed for each computer
-global proc "C:\Users\MCasas\Box\Immigrants in low wage workforce\Analysis using 2021-22 data\Data\" // needs to be fixed for each computer
-
 clear all
-/*
-import delimited "C:\Users\fhernandez\Desktop\LWW\Data\usa_00008.csv"
-save "${proc}acs1y_2021_source.dta", replace // sample for population estimates within age range
+global proc "C:\Users\fhernandez\Desktop\LWW\Processed files\" // needs to be fixed for each computer
+global save "C:\Users\fhernandez\Desktop\LWW\Processed files\Stata output\" // needs to be fixed for each computer
+
+import delimited "${proc}ACS 2022 1-year estimates IPUMS_Aug 6 2024.csv"
+save "${save}ACS 2022 1-year estimates IPUMS_${S_DATE}", replace // sample for population estimates within age range
 clear all
 
-import delimited "C:\Users\fhernandez\Desktop\LWW\Data\usa_00011.csv"
-save "${proc}acs1y_2022_source.dta", replace // sample for population estimates within age range
-clear all
-
-*/
 
 *forvalues k = 1(1)2 {
 
-use "${proc}2022_acs_data.dta", clear 
+use "${save}ACS 2022 1-year estimates IPUMS_${S_DATE}.dta", clear 
 
 *basics
-count		// 1-y: 3,252,599; 5-y: 15,537,785
-gen n = 1		// use for later in counts
+count		
+gen n = 1
 
-*STATE FIP INDICATOR
+**STATE FIP INDICATOR
 label define statefip	1 "Alabama" ///
 						2 "Alaska" ///
 						4 "Arizona" ///
@@ -165,44 +81,52 @@ label define statefip	1 "Alabama" ///
 label val statefip statefip
 label var statefip "State FIPS code"
 
-decode statefip, gen(state_name)
+	*generating a variable with state names to use for labeling later
+	decode statefip, gen(state_name)
 
-*CITIZENSHIP AND NATIVITY
+**CITIZENSHIP AND NATIVITY
+
 gen native = citizen==0 | citizen == 1 // IDs citizens
-gen naturalized = citizen==2 // IDs nat citizens
-	replace naturalized = .n if native == 1
+	replace native = 1 if bpl == 100 | bpl == 105 | bpl == 110 | bpl == 115 | bpl == 120
+	
+gen naturalized = citizen==2 // IDs nat citizens (sample of non-US born only)
+	replace naturalized = .n if native == 1 // removing US-born from universe of question
 
-label define citizen	1 "US-born" ///
-						2 "Born abroad of US parents" ///
-						3 "Naturalized citizen" ///
-						4 "Not a naturalized citizen" 
-label val citizen citizen
-label var citizen "Citizenship status"
+	label define citizen	0 "US-born" ///
+							1 "Born abroad of US parents" ///
+							2 "Naturalized citizen" ///
+							3 "Not a naturalized citizen" 
+		label val citizen citizen
+		label var citizen "Citizenship status"
 
-label define native	1 "US-born (or born abroad to US parents)" ///
-					0 "Immigrant"
-label val native native
-label var native "US-born or immigrant"
+	label define native	1 "US-born (or born abroad to US parents)" ///
+						0 "Immigrant"
+		label val native native
+		label var native "US-born or immigrant"
 
-label define naturalized	1 "Naturalized US-citizen (immigrant)" ///
-							0 "Not a naturalized US-citizen" ///
-							.n "US-born (not in sample)"
-label val naturalized naturalized
-label var naturalized "Naturalization status of immigrant"
+	label define naturalized	1 "Naturalized US-citizen (immigrant)" ///
+								0 "Not a naturalized US-citizen" ///
+								.n "US-born (not in sample)"
+	label val naturalized naturalized
+	label var naturalized "Naturalization status of immigrant"
 
-gen immigrant = native == 0
-
+gen immigrant = native == 0 // immigrant person (non-US born)
+	label var immigrant "Person is immigrant (not US-born)"
+	label define immigrant	1 "Yes, immigrant" ///
+							0 "No, US-born" 
+	label val immigrant immigrant
+	
 gen origin = .									// codes origin according to MPI, please edit if you know a better way!
-	replace origin = 	1	if bpl ==	200
-	replace origin = 	1	if bpl ==	210
+	replace origin = 	1	if bpl ==	200 // Mexico and central america
+	replace origin = 	1	if bpl ==	210 
 	replace origin = 	1	if bpl ==	299
 
-	replace origin = 	2	if bpl ==	250
+	replace origin = 	2	if bpl ==	250 // 
 	replace origin = 	2	if bpl ==	260
 
 	replace origin = 	3	if bpl ==	300
 
-	replace origin = 	4	if bpl ==	150
+	replace origin = 	4	if bpl ==	150 // Canada, Europe, and Oceania
 	replace origin = 	4	if bpl ==	160
 	replace origin = 	4	if bpl ==	400
 	replace origin = 	4	if bpl ==	401
@@ -237,7 +161,7 @@ gen origin = .									// codes origin according to MPI, please edit if you know
 	replace origin = 	4	if bpl ==	700
 	replace origin = 	4	if bpl ==	710
 
-	replace origin = 	5	if bpl ==	500
+	replace origin = 	5	if bpl ==	500 // Asia 
 	replace origin = 	5	if bpl ==	501
 	replace origin = 	5	if bpl ==	502
 	replace origin = 	5	if bpl ==	511
@@ -265,9 +189,9 @@ gen origin = .									// codes origin according to MPI, please edit if you know
 	replace origin = 	5	if bpl ==	544
 	replace origin = 	5	if bpl ==	599
 
-	replace origin = 	6	if bpl ==	600
+	replace origin = 	6	if bpl ==	600 // Africa 
 
-	replace origin = 	7	if bpl ==	950
+	replace origin = 	7	if bpl ==	950 // Other NEC
 	
 	replace origin = .n if native == 1
 	
@@ -284,41 +208,38 @@ label var origin "Country of origin of immigrant"
 label var bpl "Place of birth"
 label var bpld "Place of birth (detailed)"
 
-
-*ENGLISH PROFICIENCY
+**ENGLISH PROFICIENCY
 gen lep = 0
-	replace lep = 1 if speak==1 | speak==5 | speak==6 // LimEngProf according to MPI
+	replace lep = 1 if speakeng==1 | speakeng==5 | speakeng==6 // LEP from MPI
 
-label define speak	0 "N/A or blank" ///
-					1 "Does not speak English" /// 
-					2 "Yes, speaks English" ///
-					3 "Yes, speaks only English" ///
-					4 "Yes, speaks English very well" /// 
-					5 "Yes, speaks English well" /// 
-					6 "Yes, speaks English but not well" 
-label val speak speak 
-label var speak "Speaks English"
-
-clonevar speak2 = speak
-	recode speak2 (1=1) (6=2) (5=3) (4=4) (3=5) (2=.n) (0=.m) 
+clonevar speakeng2 = speakeng
+	recode speakeng2	(1=1) (6=2) (5=3) (4=4) (3=5) (0=.m)
 	
-	label define speak2	1 "Does't speak English" ///
+label define speakeng	0 "N/A or blank" ///
+						1 "Does not speak English" /// 
+						3 "Yes, speaks only English" ///
+						4 "Yes, speaks English very well" /// 
+						5 "Yes, speaks English well" ///
+						6 "Yes, speaks English but not well" ///
+						
+label define speakeng2	1 "Does not speak English" /// 
 						2 "Yes, speaks English but not well" ///
 						3 "Yes, speaks English well" ///
-						4 "Yes, speaks English very well" ///
+						4 "Yes, speaks English very well" /// 
 						5 "Yes, speaks only English" ///
-						.n "Not in the sample (val == 2)" ///
 						.m "N/A or blank"
-	label val speak2 speak2
-	label var speak2 "Speaks English (recategorized)"
-
+						
+	label val speakeng speakeng 
+	label val speakeng2 speakeng2 
+	label var speakeng "English proficiency"
+	label var speakeng2 "English proficiency (recode)"
 label define lep	1 "Has limited English proficiency" ///
-					0 "Doesn't have limited English proficiency" 
-label val lep lep
-label var lep "Limited English proficiency status"
+					0 "Has English proficiency" 
+	label val lep lep
+	label var lep "Has limited English proficiency"
 
-*EDUCATIONAL ATTAINMENT
-gen educm = .
+**EDUCATIONAL ATTAINMENT
+gen educm = .m
 	replace educm = 1 if educd<62
 	replace educm = 2 if educd==63 | educd==64
 	replace educm = 3 if educd==65 | educd==71 | educd==81
@@ -329,28 +250,32 @@ label define educm	1 "Less than HS or equivalent" ///
 					2 "High school or equivalent degree" ///
 					3 "Some college or associate degree" ///
 					4 "Bachelor's degree" ///
-					5 "Graduate degree"
-label val educm educm
-label var educm "Educational attainment (5-category variable)"
-label var educd "Educational attainment (detailed)"
+					5 "Graduate degree" ///
+					.m "Missing information"
+	label val educm educm
+	label var educm "Educational attainment (5-category variable)"
+	label var educd "Educational attainment (detailed)"
 
-*YEARS IN THE USA
-gen tenure = .
-	replace tenure = 1 if yrsusa1<5
-	replace tenure = 2 if yrsusa1>4 & yrsusa1<10
-	replace tenure = 3 if yrsusa1>9 & yrsusa1<20
-	replace tenure = 4 if yrsusa1>19		// # of years in the US
- 
-label define tenure	1 ">5 years" ///
-					2 "5 to 9 years" ///
-					3 "10 to 19" ///
-					4 "20 or more years"
-label val tenure tenure
-label var tenure "Year of immigration"
-label var yrsusa1 "Years in the US"
+tab educm educd,m 
 
-*RACE AND ETHNICITY
-gen racem = .
+**YEARS IN THE USA
+gen yearsusa = .m
+	replace yearsusa = 1 if yrsusa1<5
+	replace yearsusa = 2 if yrsusa1>4 & yrsusa1<10
+	replace yearsusa = 3 if yrsusa1>9 & yrsusa1<20
+	replace yearsusa = 4 if yrsusa1>19		// # of years in the US
+	replace yearsusa = .n if native == 1
+label define yearsusa	1 ">5 years" ///
+						2 "5 to 9 years" ///
+						3 "10 to 19" ///
+						4 "20 or more years" ///
+						.n "NIS: US-born"
+	label val yearsusa yearsusa
+	label var yearsusa "Number of years in the US (category)"
+	label var yrsusa1 "Number of years in the US"
+
+**RACE AND ETHNICITY
+gen racem = .m
 	replace racem = 1 if race==1 & hispan==0 | hispan==9
 	replace racem = 2 if race==2 & hispan==0 | hispan==9
 	replace racem = 3 if (race==4 | race==5 | race==6) & hispan==0 | hispan==9
@@ -367,54 +292,87 @@ label define racem	1 "NL White" ///
 					5 "Native American or Alaska Native"	///
 					6 "Two or more races" ///
 					7 "Other undetermined race/ethnicity"
-label val racem racem
-label var racem "Race/ethnicity reduced cateogories"
-label var race "Race"
+	label val racem racem
+	label var racem "Race/ethnicity reduced cateogories"
+	label var race "Race"
 
-*GENDER
-recode sex (1=0) (2=1)
+**GENDER
+recode sex (1=0) (2=1) (9=.m)
 label define sex	1 "Female" ///
 					0 "Male"
-label val sex sex
-label var sex "Respondent is female"
+	label val sex sex
+	label var sex "Respondent is female"
 
-drop if inlist(bpl, 100,105,110,115,120) // dropping PR and other US territories
+*drop if inlist(bpl, 100,105,110,115,120) // dropping PR and other US territories
 
-gen agef = age <= 25 | age<=54
-	label define agef	0 "Not a prime-age worker" ///
-						1 "Prime-age worker" 
-	label val agef agef 
-	label var agef "Prime-age worker indicator"
 
+**LABORFORCE VARIABLES
 *defining labforce/employed sample
 recode labforce (0=.m) (1=0) (2=1) 
-label define labforce	0 "Not in the labor force" ///
-						1 "In the labor force" ///
-						.m "N/A"
-label val labforce labforce
-label var labforce "Labor force indicator"
+	label define labforce	0 "Not in the labor force" ///
+							1 "In the labor force" ///
+							.m "N/A"
+	label val labforce labforce
+	label var labforce "Labor force indicator"
 
 recode farm (0=.m) (1=0) (2=1) 
-label define farm	0 "Non-farm" ///
-					1 "Farm" ///
-					.m "N/A"
-label val farm farm
-label var farm "Farm indicator"
+	label define farm	0 "Non-farm household" ///
+						1 "Farm household" ///
+						.m "N/A"
+	label val farm farm
+	label var farm "Farm household indicator"
 
-* using definition from workrise: age 25-54 and employed in the last year 
-gen insamp = 1 if empstat == 1 & agef == 1 
-	replace insamp = 0 if insamp == .
+**SAMPLE MARKERS 
+
+/* from workrise 
+
+Our sample of low-wage workers is made up of individuals ages 25–54, what 
+economists refer to as prime-age workers, in the labor force who were employed 
+at some point during the prior year. The sample includes both full- and 
+part-time workers.
+
+*/
+
+**LABORFORCE PRIME AGE
+gen primeagelf = age >= 25 & age<=54
+	label define primeagelf	0 "Not a prime-age worker" ///
+							1 "Prime-age worker" 
+	label val primeagelf primeagelf 
+	label var primeagelf "Prime-age worker indicator"
+
+*worked at some point during the prior year 
+gen worked = .m 
+	replace worked = 1 if wkswork1 >0 
+	replace worked = 0 if wkswork1 ==0
 	
-	label define insamp	1 "In sample (employed, aged 25-54)" ///
-						0 "Not in sample" 
+	label define worked	1 "Worked at least 1 week" ///
+						0 "Didn't work any weeks" ///
+						.m "N/A"
+	label val worked worked 
+	label var worked "Worked at least 1 week in the past 12 months" // calendar year
+
+gen insamp = .m 
+	replace insamp = 1 if worked == 1 & primeagelf == 1 
+	replace insamp = 0 if worked == 0 | primeagelf == 0
+	
+	label define insamp	1 "In sample" ///
+						0 "Not in sample" ///
+						.m "N/A"
 	label val insamp insamp
-	label var insamp "In-sample indicator"
+	label var insamp "In-sample indicator (worked, aged 25-54)"
 	
+**WAGE CONSTRUCTION
 *fixing wages
 replace incwage = .n if incwage == 999999 
 replace incwage = .s if incwage == 999998
 
-gen hwage = incwage/(uhrswork*wkswork1) /* Note that this hwage measure is 
+
+gen hwage = incwage/(uhrswork*wkswork1) 
+	replace hwage = .z if hwage == 0
+	replace insamp = 0 if hwage ==.z
+	replace hwage = .m if worked == 0
+	
+/* Note that this hwage measure is 
 										based on 3 variables:
 										1. the annual income from wages/salaries
 										2. the usual amount of hours worked per week
@@ -425,43 +383,32 @@ gen hwage = incwage/(uhrswork*wkswork1) /* Note that this hwage measure is
 										August 2019, the wages cover Aug 2018-
 										Aug 2019.
 										*/			
-label var hwage "Pre-tax hourly wage estimated"
-label var incwage "Total pre-tax wage and salary income"
-
+	
+	label var hwage "Pre-tax hourly wage estimated"
+	label var incwage "Total pre-tax wage and salary income"
+	label var uhrswork "Usual number of hours worked in the past 12 months" 
+	label var wkswork1 "Weeks worked in the last 12 months"
+	
 *full time part time indicator
 gen fulltime = uhrswork >34
-label var fulltime "Works full time (35 or more hours usually per week)"
-label define fulltime	1 "Works fulltime" ///
-						0 "Works part time or less"
-label val fulltime fulltime
+	label var fulltime "Works full time (35 or more hours usually per week)"
+	label define fulltime	1 "Works fulltime" ///
+							0 "Works part time or less"
+	label val fulltime fulltime
 
-gen parttime = fulltime == 0	
-	label define parttime	1 "Works part-time" ///
-							0 "Works full-time" 
-	label val parttime parttime 
-	label var parttime "Part-time indicator"
-	
+gen parttime = fulltime == 0
+	label var parttime "Works part time (usually less than 35 per week)"
+	label define parttime	1 "Works part time" ///
+							0 "Works full time"
+	label val parttime parttime
 *final fixes
 tab educm, gen(educm)
 gen nlep = lep == 0
-gen tenure2 = inlist(tenure,3,4)
+gen yearsusa2 = inlist(yearsusa,3,4)
 tab racem, gen(racem)
 
 
-**KEY VARIABLES**
-/*
-forvalues i = 1(1)56 {
-	capture noisily xtile  q_wage_`i' = hwage if incwage>0 & insamp==1 & statefip==`i' [fw = perwt], n(10)
-	}
-gen q_wage = .
-forvalues i = 1(1)56 {
-	capture noisily replace q_wage = q_wage_`i' if q_wage==. & q_wage_`i' !=.
-	}
-*/ 
-
-
-*** Updating definition of low wage workers based on https://www.workrisenetwork.org/sites/default/files/2023-10/technical-appendix-who-low-wage-workforce.pdf 
-
+*** Definition of low wage workers based on https://www.workrisenetwork.org/sites/default/files/2023-10/technical-appendix-who-low-wage-workforce.pdf 
 summ hwage if insamp == 1, d
 
 gen mednatwage_lww = r(p50)*(2/3)
@@ -479,17 +426,11 @@ label var lww "Low-wage worker indicator"
 *label var q_wage "Wage quintile by state" 
 *label var n "Person indicator"
 
-/*note, incwage has 2 non-relevant responses, incwage=999999 & incwage==999998
-that stem from non-response and not applicable, respectively. I checked that 
-the labor force sample doesn't have any of these values included. All incwages
-reported none of these values.
-*/
-
-save "${proc}acs1y_2022_full_clean.dta", replace // sample for population estimates
+save "${proc}acs1y_2022_full_clean_${S_DATE}.dta", replace // sample for population estimates
  
  *dropping ages -15 and +64, eyeball, seems to drop evenly across sample years
 keep if insamp == 1 
 
-save "${proc}acs1y_2022_employed_clean.dta", replace 
+save "${proc}acs1y_2022_employed_clean_${S_DATE}.dta", replace 
 	
 *}
