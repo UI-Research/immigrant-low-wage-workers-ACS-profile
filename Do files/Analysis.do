@@ -578,27 +578,3 @@ forvalues i = 1(1)25 {
 					O`l' = matrix(sex`i')
 			}
 	}
-
-clear all
-use "${proc}acs1y_2022_employed.dta", clear
-*identifying top occupations with most immigrant sorted by share of female workers
-	*step 1: total immigrants
-	preserve 
-		collapse	(sum) n ///
-					(p50) hwage ///
-					(mean) educm1 nlep yearsusa2 naturalized racem1 racem2 racem3 ///
-						racem4 sex parttime ///
-					[fw = perwt] if native == 0 & lww == 1, by(occ)
-		
-		save "${proc}collapse occ femtable.dta", replace 
-	restore 
-	
-	collapse (mean) naturalized [fw = perwt] if lww == 1, by(occ)
-	merge 1:1 occ using "${proc}collapse occ femtable.dta"
-	keep if _merge == 3
-	drop _merge 
-	order occ n naturalized sex
-	gsort -n -sex
-	
-	export excel using "${tab}Female dense occupations of ILWW_$S_DATE.xlsx" ///
-		in 1/25, sheet("FEM OCC TAB") sheetmodify firstrow(variables) 
