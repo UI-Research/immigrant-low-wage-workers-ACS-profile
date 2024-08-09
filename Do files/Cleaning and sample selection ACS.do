@@ -12,14 +12,14 @@ clear all
 global proc "C:\Users\fhernandez\Desktop\LWW\Processed files\" // needs to be fixed for each computer
 global save "C:\Users\fhernandez\Desktop\LWW\Processed files\Stata output\" // needs to be fixed for each computer
 
-import delimited "${proc}ACS 2022 1-year estimates IPUMS_Aug 6 2024.csv"
-save "${save}ACS 2022 1-year estimates IPUMS_${S_DATE}", replace // sample for population estimates within age range
+*import delimited "${proc}ACS 2022 1-year estimates IPUMS_Aug 6 2024.csv"
+*save "${save}ACS 2022 1-year estimates IPUMS_${S_DATE}", replace // sample for population estimates within age range
 clear all
 
 
 *forvalues k = 1(1)2 {
 
-use "${save}ACS 2022 1-year estimates IPUMS_${S_DATE}.dta", clear 
+use "${save}ACS 2022 1-year estimates IPUMS_ 7 Aug 2024.dta", clear // latest data
 
 *basics
 count		
@@ -211,6 +211,7 @@ label var bpld "Place of birth (detailed)"
 **ENGLISH PROFICIENCY
 gen lep = 0
 	replace lep = 1 if speakeng==1 | speakeng==5 | speakeng==6 // LEP from MPI
+	replace lep = .m if speakeng == 0
 
 clonevar speakeng2 = speakeng
 	recode speakeng2	(1=1) (6=2) (5=3) (4=4) (3=5) (0=.m)
@@ -333,6 +334,33 @@ part-time workers.
 
 */
 
+**WAGE CONSTRUCTION
+*fixing wages
+replace incwage = .n if incwage == 999999 // coded as not in sample 
+replace incwage = .s if incwage == 999998
+
+
+gen hwage = incwage/(uhrswork*wkswork1) 
+	replace hwage = .c if classwkr == 1	
+
+	label var hwage "Pre-tax hourly wage estimated"
+	label var incwage "Total pre-tax wage and salary income"
+	label var uhrswork "Usual number of hours worked in the past 12 months" 
+	label var wkswork1 "Weeks worked in the last 12 months"
+	
+/* Note that this hwage measure is 
+										based on 3 variables:
+										1. the annual income from wages/salaries
+										2. the usual amount of hours worked per week
+										3. the number of weeks worked over the year
+										
+										Note that ACS collects wage/salaries
+										over the past year - so if surveyed in
+										August 2019, the wages cover Aug 2018-
+										Aug 2019.
+										*/			
+	
+
 **LABORFORCE PRIME AGE
 gen primeagelf = age >= 25 & age<=54
 	label define primeagelf	0 "Not a prime-age worker" ///
@@ -354,6 +382,7 @@ gen worked = .m
 gen insamp = .m 
 	replace insamp = 1 if worked == 1 & primeagelf == 1 
 	replace insamp = 0 if worked == 0 | primeagelf == 0
+	replace insamp = 0 if classwkr == 1
 	
 	label define insamp	1 "In sample" ///
 						0 "Not in sample" ///
@@ -361,33 +390,6 @@ gen insamp = .m
 	label val insamp insamp
 	label var insamp "In-sample indicator (worked, aged 25-54)"
 	
-**WAGE CONSTRUCTION
-*fixing wages
-replace incwage = .n if incwage == 999999 
-replace incwage = .s if incwage == 999998
-
-
-gen hwage = incwage/(uhrswork*wkswork1) 
-	replace hwage = .z if hwage == 0
-	replace insamp = 0 if hwage ==.z
-	replace hwage = .m if worked == 0
-	
-/* Note that this hwage measure is 
-										based on 3 variables:
-										1. the annual income from wages/salaries
-										2. the usual amount of hours worked per week
-										3. the number of weeks worked over the year
-										
-										Note that ACS collects wage/salaries
-										over the past year - so if surveyed in
-										August 2019, the wages cover Aug 2018-
-										Aug 2019.
-										*/			
-	
-	label var hwage "Pre-tax hourly wage estimated"
-	label var incwage "Total pre-tax wage and salary income"
-	label var uhrswork "Usual number of hours worked in the past 12 months" 
-	label var wkswork1 "Weeks worked in the last 12 months"
 	
 *full time part time indicator
 gen fulltime = uhrswork >34
@@ -401,6 +403,7 @@ gen parttime = fulltime == 0
 	label define parttime	1 "Works part time" ///
 							0 "Works full time"
 	label val parttime parttime
+
 *final fixes
 tab educm, gen(educm)
 gen nlep = lep == 0
@@ -409,7 +412,7 @@ tab racem, gen(racem)
 
 
 *** Definition of low wage workers based on https://www.workrisenetwork.org/sites/default/files/2023-10/technical-appendix-who-low-wage-workforce.pdf 
-summ hwage if insamp == 1, d
+summ hwage if insamp == 1 , d
 
 gen mednatwage_lww = r(p50)*(2/3)
 
@@ -420,11 +423,6 @@ label define lww	1 "Low-wage worker" ///
 					0 "Not a low-wage worker" ///
 					.m "Missing information"
 label var lww "Low-wage worker indicator"
-
-*drop q_wage_*
-
-*label var q_wage "Wage quintile by state" 
-*label var n "Person indicator"
 
 save "${proc}acs1y_2022_full_clean_${S_DATE}.dta", replace // sample for population estimates
  
