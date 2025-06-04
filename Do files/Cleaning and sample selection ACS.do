@@ -12,14 +12,16 @@ clear all
 global proc "C:\Users\fhernandez\Desktop\LWW\Processed files\" // needs to be fixed for each computer
 global save "C:\Users\fhernandez\Desktop\LWW\Processed files\Stata output\" // needs to be fixed for each computer
 
-*import delimited "${proc}ACS 2022 1-year estimates IPUMS_Aug 6 2024.csv"
-*save "${save}ACS 2022 1-year estimates IPUMS_${S_DATE}", replace // sample for population estimates within age range
+**ANALYST RUNS THIS THE FIRST TIME TO PULL THE EXTRACT**
+
+*import delimited "${proc}ACS 2023 1-year estimates IPUMS_Aug 6 2024.csv"
+*save "${save}ACS 2023 1-year estimates IPUMS_${S_DATE}", replace // sample for population estimates within age range
 clear all
 
 
 *forvalues k = 1(1)2 {
 
-use "${save}ACS 2022 1-year estimates IPUMS_ 7 Aug 2024.dta", clear // latest data
+use "${save}ACS 2023 1-year estimates IPUMS_ 7 Aug 2024.dta", clear // latest data
 
 *basics
 count		
@@ -413,9 +415,9 @@ label define lww	1 "Low-wage worker" ///
 					.m "Missing information"
 label var lww "Low-wage worker indicator"
 
-save "${proc}acs1y_2022_full_clean_${S_DATE}.dta", replace // sample for population estimates
+save "${proc}acs1y_2023_full_clean_${S_DATE}.dta", replace // sample for population estimates
  
  *dropping ages -15 and +64, eyeball, seems to drop evenly across sample years
 keep if insamp == 1 
 
-save "${proc}acs1y_2022_employed_clean_${S_DATE}.dta", replace 
+save "${proc}acs1y_2023_employed_clean_${S_DATE}.dta", replace 
