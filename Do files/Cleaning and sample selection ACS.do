@@ -86,11 +86,12 @@ label var statefip "State FIPS code"
 
 **CITIZENSHIP AND NATIVITY
 
-gen native = citizen==0 | citizen == 1 // IDs citizens
-	replace native = 1 if bpl == 100 | bpl == 105 | bpl == 110 | bpl == 115 | bpl == 120
-	
+gen usborn = citizen==0 | citizen == 1 // IDs citizens
+	replace usborn = 1 if bpl == 100 | bpl == 105 | bpl == 110 | bpl == 115 | bpl == 120
+		// IDs citizens (the ACS considers people from PR and UST as citizens in the data)
+
 gen naturalized = citizen==2 // IDs nat citizens (sample of non-US born only)
-	replace naturalized = .n if native == 1 // removing US-born from universe of question
+	replace naturalized = .n if usborn == 1 // removing US-born from universe of question
 
 	label define citizen	0 "US-born" ///
 							1 "Born abroad of US parents" ///
@@ -99,10 +100,10 @@ gen naturalized = citizen==2 // IDs nat citizens (sample of non-US born only)
 		label val citizen citizen
 		label var citizen "Citizenship status"
 
-	label define native	1 "US-born (or born abroad to US parents)" ///
+	label define usborn	1 "US-born (or born abroad to US parents)" ///
 						0 "Immigrant"
-		label val native native
-		label var native "US-born or immigrant"
+		label val usborn usborn
+		label var usborn "US-born or immigrant"
 
 	label define naturalized	1 "Naturalized US-citizen (immigrant)" ///
 								0 "Not a naturalized US-citizen" ///
@@ -110,7 +111,7 @@ gen naturalized = citizen==2 // IDs nat citizens (sample of non-US born only)
 	label val naturalized naturalized
 	label var naturalized "Naturalization status of immigrant"
 
-gen immigrant = native == 0 // immigrant person (non-US born)
+gen immigrant = usborn == 0 // immigrant person (non-US born)
 	label var immigrant "Person is immigrant (not US-born)"
 	label define immigrant	1 "Yes, immigrant" ///
 							0 "No, US-born" 
@@ -234,6 +235,7 @@ label define speakeng2	1 "Does not speak English" ///
 	label val speakeng2 speakeng2 
 	label var speakeng "English proficiency"
 	label var speakeng2 "English proficiency (recode)"
+
 label define lep	1 "Has limited English proficiency" ///
 					0 "Has English proficiency" 
 	label val lep lep
@@ -304,7 +306,7 @@ label define sex	1 "Female" ///
 	label val sex sex
 	label var sex "Respondent is female"
 
-*drop if inlist(bpl, 100,105,110,115,120) // dropping PR and other US territories
+drop if inlist(bpl, 100,105,110,115,120) // dropping PR and other US territories
 
 
 **LABORFORCE VARIABLES
@@ -338,7 +340,7 @@ part-time workers.
 *fixing wages
 replace incwage = .n if incwage == 999999 // coded as not in sample 
 replace incwage = .s if incwage == 999998
-
+replace incwage = .m if incwage == 0 // data quality issue, there were about 150 zeros in incwage
 
 gen hwage = incwage/(uhrswork*wkswork1) 
 	replace hwage = .c if classwkr == 1	
@@ -346,21 +348,8 @@ gen hwage = incwage/(uhrswork*wkswork1)
 	label var hwage "Pre-tax hourly wage estimated"
 	label var incwage "Total pre-tax wage and salary income"
 	label var uhrswork "Usual number of hours worked in the past 12 months" 
-	label var wkswork1 "Weeks worked in the last 12 months"
+	label var wkswork1 "Weeks worked in the last 12 months"		
 	
-/* Note that this hwage measure is 
-										based on 3 variables:
-										1. the annual income from wages/salaries
-										2. the usual amount of hours worked per week
-										3. the number of weeks worked over the year
-										
-										Note that ACS collects wage/salaries
-										over the past year - so if surveyed in
-										August 2019, the wages cover Aug 2018-
-										Aug 2019.
-										*/			
-	
-
 **LABORFORCE PRIME AGE
 gen primeagelf = age >= 25 & age<=54
 	label define primeagelf	0 "Not a prime-age worker" ///
@@ -430,5 +419,3 @@ save "${proc}acs1y_2022_full_clean_${S_DATE}.dta", replace // sample for populat
 keep if insamp == 1 
 
 save "${proc}acs1y_2022_employed_clean_${S_DATE}.dta", replace 
-	
-*}
